@@ -1,0 +1,202 @@
+# ============================================================
+#              ***  JEL for log-logistic distribution (classical tests)
+#*                    #Author: Avhad Ganesh Vishnu  
+# ============================================================
+# =========================
+# Required libraries
+# =========================
+library(VGAM)
+library(extraDistr)
+library(stargazer)
+
+# =========================
+# Log-logistic distribution
+# =========================
+rloglogis <- function(n, alpha, sigma) {
+  rllogis(n, shape = alpha, scale = sigma)
+}
+
+ploglogis <- function(x, alpha, sigma) {
+  x <- pmax(x, .Machine$double.eps)
+  1 / (1 + (x / sigma)^(-alpha))
+}
+
+# =========================
+# MLE for log-logistic
+# =========================
+LogLogisticMLE <- function(X) {
+  negLL <- function(par) {
+    a <- exp(par[1])
+    s <- exp(par[2])
+    ll <- sum(log(a) - log(s) + (a - 1)*log(X/s) - 2*log(1 + (X/s)^a))
+    -ll
+  }
+  fit <- optim(c(0, 0), negLL)
+  c(alpha = exp(fit$par[1]), sigma = exp(fit$par[2]))
+}
+
+# =========================
+# Alternatives
+# =========================
+SimFromDist <- function(DistNum, n) {
+  if (DistNum == 1)      X <- rllogis(n, 0.5, 1)
+  else if (DistNum == 2) X <- rllogis(n, 1, 1)
+  else if (DistNum == 3) X <- rllogis(n, 2, 1)
+  else if (DistNum == 4) X <- rllogis(n, 5, 1)
+  
+  else if (DistNum == 5) X <- rloglap(n, location.ald = 0, scale.ald = 1,
+                                      kappa = sqrt(0.5/(1-0.5)))
+  else if (DistNum == 6) X <- rloglap(n, location.ald = 2, scale.ald = 1,
+                                      kappa = sqrt(0.5/(1-0.5)))
+  
+  else if (DistNum == 7) X <- exp(rt(n, 2))
+  else if (DistNum == 8) X <- exp(rt(n, 3))
+  else if (DistNum == 9) X <- exp(rt(n, 5))
+  
+  else if (DistNum == 10) X <- rlnorm(n, 0, 1)
+  else if (DistNum == 11) X <- rlnorm(n, 1, 1)
+  else if (DistNum == 12) X <- rlnorm(n, 3, 2)
+  
+  else if (DistNum == 13) X <- rgamma(n, 1, 2)
+  else if (DistNum == 14) X <- rgamma(n, 2, 0.5)
+  else if (DistNum == 15) X <- rgamma(n, 0.5, 1)
+  
+  else if (DistNum == 16) X <- rweibull(n, 1, 0.5)
+  else if (DistNum == 17) X <- rweibull(n, 0.5, 1)
+  else if (DistNum == 18) X <- rweibull(n, 1, 1.5)
+  
+  else if (DistNum == 19) X <- rinvgamma(n, 1, 2)
+  else if (DistNum == 20) X <- rinvgamma(n, 2, 0.5)
+  else if (DistNum == 21) X <- rinvgamma(n, 0.5, 1.5)
+  
+  else if (DistNum == 22) X <- rpareto(n, 1, 1)
+  else if (DistNum == 23) X <- rpareto(n, 1.5, 1)
+  
+  else if (DistNum == 24) X <- rchisq(n, 2)
+  else if (DistNum == 25) X <- rchisq(n, 3)
+  else stop("Invalid DistNum")
+  
+  return(X[X > 0])
+}
+
+# =========================
+# Classical GOF Tests
+# =========================
+KSn <- function(X, alpha, sigma) {
+  X <- sort(X)
+  n <- length(X)
+  FH <- ploglogis(X, alpha, sigma)
+  max(max((1:n)/n - FH, na.rm = TRUE),
+      max(FH - (0:(n-1))/n, na.rm = TRUE))
+}
+
+CVn <- function(X, alpha, sigma) {
+  X <- sort(X)
+  n <- length(X)
+  FH <- ploglogis(X, alpha, sigma)
+  sum((FH - (2*(1:n)-1)/(2*n))^2) + 1/(12*n)
+}
+
+ADn <- function(X, alpha, sigma) {
+  X <- sort(X)
+  n <- length(X)
+  FH <- ploglogis(X, alpha, sigma)
+  -n - mean((2*(1:n)-1)*(log(FH) + log(1 - rev(FH))))
+}
+
+MAn <- function(X, alpha, sigma) {
+  X <- sort(X)
+  n <- length(X)
+  FH <- ploglogis(X, alpha, sigma)
+  n/2 - 2*sum(FH) - sum((2 - (2*(1:n)-1)/n)*log(1-FH))
+}
+
+ZAn <- function(X, alpha, sigma) {
+  X <- sort(X)
+  n <- length(X)
+  FH <- ploglogis(X, alpha, sigma)
+  j <- 1:n
+  -sum(log(FH)/(n-j+0.5) + log(1-FH)/(j-0.5))
+}
+
+ZBn <- function(X, alpha, sigma) {
+  X <- sort(X)
+  n <- length(X)
+  FH <- ploglogis(X, alpha, sigma)
+  j <- 1:n
+  arg <- (1/FH - 1)/((n-0.5)/(j-0.75) - 1)
+  sum(log(arg)^2)
+}
+
+ZCn <- function(X, alpha, sigma) {
+  X <- sort(X)
+  n <- length(X)
+  FH <- ploglogis(X, alpha, sigma)
+  j <- 1:n
+  T1 <- n*(j-0.5)/(n-j+0.5)^2 * log((j-0.5)/(n*FH))
+  T2 <- n/(n-j+0.5) * log((n-j+0.5)/(n*(1-FH)))
+  2*sum(T1 + T2)
+}
+
+# =========================
+# Power calculation
+# =========================
+powersWS <- function(TS, alpha) {
+  cv <- quantile(TS[,2], 1-alpha, na.rm = TRUE)
+  mean(TS[,1] > cv, na.rm = TRUE)
+}
+
+# =========================
+# Simulation parameters
+# =========================
+sample_sizes <- c(25,50)
+Range <- 1:25
+MC <- 10000
+alpha <- 0.05
+
+Results_table <- data.frame()
+
+# =========================
+# Main simulation loop
+# =========================
+for (DistNum in Range) {
+  for (n in sample_sizes) {
+    
+    TS_KS <- TS_CV <- TS_AD <- TS_MA <- TS_ZA <- TS_ZB <- TS_ZC <- matrix(0, MC, 2)
+    
+    for (j in 1:MC) {
+      
+      X <- sort(SimFromDist(DistNum, n))
+      est <- LogLogisticMLE(X)
+      
+      Xs <- sort(rloglogis(n, est[1], est[2]))
+      ests <- LogLogisticMLE(Xs)
+      
+      TS_KS[j,] <- c(KSn(X, est[1], est[2]), KSn(Xs, ests[1], ests[2]))
+      TS_CV[j,] <- c(CVn(X, est[1], est[2]), CVn(Xs, ests[1], ests[2]))
+      TS_AD[j,] <- c(ADn(X, est[1], est[2]), ADn(Xs, ests[1], ests[2]))
+      TS_MA[j,] <- c(MAn(X, est[1], est[2]), MAn(Xs, ests[1], ests[2]))
+      TS_ZA[j,] <- c(ZAn(X, est[1], est[2]), ZAn(Xs, ests[1], ests[2]))
+      TS_ZB[j,] <- c(ZBn(X, est[1], est[2]), ZBn(Xs, ests[1], ests[2]))
+      TS_ZC[j,] <- c(ZCn(X, est[1], est[2]), ZCn(Xs, ests[1], ests[2]))
+    }
+    
+    Results_table <- rbind(
+      Results_table,
+      data.frame(
+        Dist = DistNum,
+        n = n,
+        KS = powersWS(TS_KS, alpha),
+        CV = powersWS(TS_CV, alpha),
+        AD = powersWS(TS_AD, alpha),
+        MA = powersWS(TS_MA, alpha),
+        ZA = powersWS(TS_ZA, alpha),
+        ZB = powersWS(TS_ZB, alpha),
+        ZC = powersWS(TS_ZC, alpha)
+      )
+    )
+  }
+}
+
+print(Results_table)
+write.csv(Results_table, "LogLogistic_Power.csv", row.names = FALSE)
