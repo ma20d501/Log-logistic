@@ -1,3 +1,8 @@
+# ============================================================
+#              ***  JEL for log-logistic distribution (SCR test)
+#*                    #Author: Avhad Ganesh Vishnu  
+# ============================================================
+
 library(VGAM)
 library(extraDistr)
 
